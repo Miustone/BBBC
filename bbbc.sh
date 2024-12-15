@@ -31,26 +31,6 @@ error() {
     echo -e "${RED}${BOLD}$1${RESET}"
 }
 
-# FUNCTION TO CHECK AND INSTALL A PACKAGE IF NOT ALREADY INSTALLED
-install_if_missing() {
-    local package_name=$1
-    if ! command -v "$package_name" &>/dev/null; then
-        warning "$package_name is not installed. Attempting to install it..."
-        if [ "$PACKAGE_MANAGER" == "apt" ]; then
-            sudo apt update && sudo apt -y install "$package_name"
-        elif [ "$PACKAGE_MANAGER" == "pacman" ]; then
-            sudo pacman -Sy --noconfirm "$package_name"
-            sudo yay -S cgpt --nonfirm "$package_name"
-        else
-            error "Unsupported package manager. Please install $package_name manually."
-            exit 1
-        fi
-        success "$package_name installed successfully."
-    else
-        success "$package_name is already installed."
-    fi
-}
-
 # FUNCTION TO CHECK IF PACKAGE MANAGER IS AVAILABLE
 check_package_manager() {
     if command -v apt &>/dev/null; then
@@ -66,6 +46,29 @@ check_package_manager() {
 # CHECK THE PACKAGE MANAGER
 info "Checking for package manager..."
 check_package_manager
+
+# FUNCTION TO CHECK AND INSTALL A PACKAGE IF NOT ALREADY INSTALLED
+install_if_missing() {
+    local pkg_name="$1"
+    if ! command -v "$pkg_name" &>/dev/null; then
+        warning "$pkg_name is not installed. Attempting to install it..."
+        case "$PACKAGE_MANAGER" in
+            apt)
+                sudo apt update && sudo apt -y install "$pkg_name"
+                ;;
+            pacman)
+                sudo pacman -Sy --noconfirm "$pkg_name"
+                ;;
+            *)
+                error "Unsupported package manager. Please install $pkg_name manually."
+                exit 1
+                ;;
+        esac
+        success "$pkg_name installed successfully."
+    else
+        success "$pkg_name is already installed."
+    fi
+}
 
 # ENSURE REQUIRED PACKAGES ARE INSTALLED
 REQUIRED_PACKAGES=("pv" "cgpt" "tar" "unzip")
@@ -97,8 +100,8 @@ read -p "$(info 'Enter the number corresponding to your CPU: ')" cpu_choice
 # ASSIGN RECOVERY FILE NAME BASED ON CPU SELECTION
 case $cpu_choice in
 1) recovery_file="rammus_recovery_stable-channel_mp-v5.bin" ;;
-2) recovery_file="octopus_recovery_stable-channel_mp-v35.bin" ;; 
-3) recovery_file="hatch_recovery_stable-channel_mp-v9.bin" ;; 
+2) recovery_file="octopus_recovery_stable-channel_mp-v35.bin" ;;
+3) recovery_file="hatch_recovery_stable-channel_mp-v9.bin" ;;
 4) recovery_file="volteer_recovery_stable-channel_mp-v11.bin" ;;
 5) recovery_file="zork_recovery_stable-channel_mp-v10.bin" ;;
 *)
@@ -108,7 +111,7 @@ case $cpu_choice in
 esac
 
 # DEFINE FILE PATHS
-recovery_file_path="/home/$USERNAME/Downloads/chromeos-recovery.bin.zip"
+recovery_file_path="/home/$USERNAME/Downloads/chromeos_16033.58.0_$recovery_file"
 brunch_file_path="/home/$USERNAME/Downloads/brunch.tar.gz"
 
 # CHECK AND DOWNLOAD CHROME OS RECOVERY IMAGE
