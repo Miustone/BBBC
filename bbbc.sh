@@ -2,14 +2,7 @@
 #
 # BBBC 26 - BrunchBox Boot Creator
 # Modern ChromeOS / Brunch installer for x86_64 PCs
-#
-# 2026 edition (Fixed & English):
-#   - Detects AMD Ryzen 7000/8000 & Intel 14th+/Ultra CPUs
-#   - Pre-configures Chromebook Plus out-of-the-box via installer flags
-#   - Fixes ChromeOS milestone version extraction from Google API
-#   - Maps board families (majestic/glinda/guybrush/zork) correctly
-#   - Automatically handles root / sudo elevation for disk flashing
-#
+
 
 set -Eeuo pipefail
 IFS=$'\n\t'
@@ -103,7 +96,7 @@ detect_hardware() {
     CPU_VENDOR="$(lscpu | awk -F: '/Vendor ID/ {gsub(/^[ \t]+/,"",$2); print $2; exit}')"
     CPU_MODEL="$(lscpu | awk -F: '/Model name/ {gsub(/^[ \t]+/,"",$2); print $2; exit}')"
     CPU_THREADS="$(nproc)"
-    CPU_CORES="$(lscpu | awk -F: '/Core\(s\)/ {gsub(/^[ \t]+/,"",$2); print $2; exit}')"
+    CPU_CORES="$(lscpu | awk -F: '/Core\(s\) per socket/ {gsub(/^[ \t]+/,"",$2); print $2; exit}')"
     CPU_SOCKETS="$(lscpu | awk -F: '/Socket\(s\)/ {gsub(/^[ \t]+/,"",$2); print $2; exit}')"
 
     if [[ "$CPU_VENDOR" == *AuthenticAMD* ]]; then
@@ -450,20 +443,37 @@ confirm_disk() {
     [[ "$answer" == "ERASE" ]] || die "Aborted."
 }
 
-# ---------- install ----------
+# ---------- install & post-configuration ----------
 install_brunch() {
     cd "$BRUNCH_DIR"
 
     info "Installing Brunch to $TARGET..."
-    if [[ -n "$BRUNCH_OPTIONS" ]]; then
-        sudo bash ./chromeos-install.sh \
-            -src "$RECOVERY_PATH" \
-            -dst "$TARGET" \
-            -options "$BRUNCH_OPTIONS"
-    else
-        sudo bash ./chromeos-install.sh \
-            -src "$RECOVERY_PATH" \
-            -dst "$TARGET"
+    sudo bash ./chromeos-install.sh \
+        -src "$RECOVERY_PATH" \
+        -dst "$TARGET"
+
+    if [[ -n "${BRUNCH_OPTIONS:-}" ]]; then
+        echo
+        info "Writing Brunch options ($BRUNCH_OPTIONS) to target drive Partition 12..."
+        local boot_part
+        if [[ "$TARGET" == *nvme* || "$TARGET" == *mmcblk* ]]; then
+            boot_part="${TARGET}p12"
+        else
+            boot_part="${TARGET}12"
+        fi
+
+        local mnt_dir="/tmp/brunch_efi_mnt"
+        mkdir -p "$mnt_dir"
+
+        if mount "$boot_part" "$mnt_dir" 2>/dev/null; then
+            mkdir -p "$mnt_dir/brunch"
+            echo "$BRUNCH_OPTIONS" | tr ',' '\n' > "$mnt_dir/brunch/options"
+            umount "$mnt_dir"
+            rm -rf "$mnt_dir"
+            success "Brunch options successfully applied to $boot_part!"
+        else
+            warning "Could not automatically mount $boot_part. Options can still be enabled after boot via Brunch settings."
+        fi
     fi
 }
 
