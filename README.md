@@ -1,10 +1,7 @@
 # BBBC 26 - BrunchBox Boot Creator
 Modern ChromeOS / Brunch installer for x86_64 PCs
 
-sudo apt update && sudo apt install -y git cgpt pv tar unzip
-git clone https://github.com/Miustone/BBBC.git
-cd BBBC
-sudo bash bbbc.sh
+sudo apt update && sudo apt install -y git cgpt pv tar unzip python3 && git clone https://github.com/Miustone/BBBC.git && cd BBBC && bash bbbc.sh
 
 # 🐧 Running BBBC
 
